@@ -1,17 +1,10 @@
-00:15:28 **** Incremental Build of configuration Debug for project DMA_MainBoard ****
+04:31:25 **** Incremental Build of configuration Debug for project DMA_MainBoard ****
 make -j16 all 
-arm-none-eabi-gcc "../Core/Src/stm32f1xx_hal_msp.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/stm32f1xx_hal_msp.d" -MT"Core/Src/stm32f1xx_hal_msp.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/stm32f1xx_hal_msp.o"
-arm-none-eabi-gcc -o "DMA_MainBoard.elf" @"objects.list"   -mcpu=cortex-m3 -T"D:\Z\projects\vyadh\DMA_Middleman\DMA_MainBoard\DMA_MainBoard\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="DMA_MainBoard.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
-Finished building target: DMA_MainBoard.elf
- 
 arm-none-eabi-size  DMA_MainBoard.elf 
-arm-none-eabi-objdump -h -S DMA_MainBoard.elf  > "DMA_MainBoard.list"
    text	   data	    bss	    dec	    hex	filename
-   9448	     12	   1924	  11384	   2c78	DMA_MainBoard.elf
+   9624	     12	   1932	  11568	   2d30	DMA_MainBoard.elf
 Finished building: default.size.stdout
  
-Finished building: DMA_MainBoard.list
- 
 
-00:15:29 Build Finished. 0 errors, 0 warnings. (took 910ms)
+04:31:25 Build Finished. 0 errors, 0 warnings. (took 269ms)
 

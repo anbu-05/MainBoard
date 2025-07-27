@@ -325,18 +325,19 @@ static void MX_GPIO_Init(void)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if (huart->Instance == USART2) {
+		if (memcmp(rx_msg, last_rx, sizeof(rx_msg)) != 0) {
+			memcpy(tx_msg, rx_msg, sizeof(tx_msg));
+			memcpy(last_rx, rx_msg, sizeof(last_rx));
 
-		//transfering the message
-		memcpy(tx_msg, rx_msg, sizeof(tx_msg));
+			//debug output
+			char debug[] = "\n received: ";
+			HAL_UART_Transmit(&huart1, (uint8_t*)debug, sizeof(debug) - 1, 100);
+			HAL_UART_Transmit(&huart1, rx_msg, sizeof(rx_msg), 100);
 
-		//debug output
-		char debug[] = "\n received: ";
-		HAL_UART_Transmit(&huart1, (uint8_t*)debug, sizeof(debug) - 1, 100);
-		HAL_UART_Transmit(&huart1, rx_msg, sizeof(rx_msg), 100);
-
-		//restarting the DMAs
-		HAL_UART_Receive_DMA(&huart2, rx_msg, sizeof(rx_msg));
-		HAL_UART_Transmit_DMA(&huart3, tx_msg, sizeof(tx_msg));
+			//restarting the DMAs
+			HAL_UART_Receive_DMA(&huart2, rx_msg, sizeof(rx_msg));
+			HAL_UART_Transmit_DMA(&huart3, tx_msg, sizeof(tx_msg));
+		}
 	}
 }
 
