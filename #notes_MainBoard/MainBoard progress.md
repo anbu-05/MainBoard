@@ -28,3 +28,11 @@
 	- the subscribers will be the traversal board and the robotic arm board (which means ill need to add another nano to this prototype board -ill probably switch away from breadboards and use protoboards)
 	- ill add an on board computer publisher too. which will also publish emulated traversal data.
 	- all the code on the stm32 will be specific to communicating the data between these four modules for now.
+
+### 6 Aug
+- made a protoboard circuit from the breadboard for easier prototyping
+
+### 8 Aug
+- made the prototype better. made a proper data standard.
+- | type [1] | ID [2] | Data [64] |
+- created the handleUART function that receives data, and IDs it into different buffers.

@@ -23,6 +23,11 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 
+//for debugging
+#include <stdio.h>
+#include <stdarg.h>
+
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,6 +37,11 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define MSG_TYPE_PUBLISH 0x10
+#define MSG_TYPE_SUBSCRIBE 0x11
+#define MSG_TOTAL_SIZE 67
+#define MAX_TOPICS 16
+
 
 /* USER CODE END PD */
 
@@ -44,17 +54,20 @@
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
-DMA_HandleTypeDef hdma_usart2_rx;
-DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
+uint8_t UART1_rxBuffer[MSG_TOTAL_SIZE];
+uint8_t UART2_rxBuffer[MSG_TOTAL_SIZE];
+uint8_t UART3_rxBuffer[MSG_TOTAL_SIZE];
 
+uint8_t UART1_txBuffer[MSG_TOTAL_SIZE];
+uint8_t UART2_txBuffer[MSG_TOTAL_SIZE];
+uint8_t UART3_txBuffer[MSG_TOTAL_SIZE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART3_UART_Init(void);
@@ -64,9 +77,72 @@ static void MX_USART3_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t rx_msg[1] = {0};
-uint8_t last_rx[1] = {0};
-uint8_t tx_msg[1] = {0};
+typedef struct {
+	uint8_t type;
+	uint16_t ID;
+	uint8_t data[64];
+} Message_t;
+
+Message_t UART1_record[MAX_TOPICS] = {0};
+Message_t UART2_record[MAX_TOPICS] = {0};
+Message_t UART3_record[MAX_TOPICS] = {0};
+
+
+//for debugging -remove later:
+
+void uart1_debug(const char* msg) {
+	HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 100);
+}
+
+void uart1_debugf(const char* format, ...) {
+	char buffer[128];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(buffer, sizeof(buffer), format, args);
+	va_end(args);
+	HAL_UART_Transmit(&huart1, (uint8_t*)buffer, strlen(buffer), 100);
+}
+
+//---------//
+
+void storeMessage(Message_t* record, Message_t* msg) {
+	for (int i=0;i<MAX_TOPICS;i++) {
+		if (record[i].ID == 0) {
+		  memcpy(&record[i], msg, MSG_TOTAL_SIZE);
+		  break;
+		}
+	}
+}
+
+Message_t* findMessage(Message_t* record, uint16_t ID) {
+	for (int i=0;i<MAX_TOPICS;i++) {
+		if (record[i].ID == ID) return &record[i];
+	}
+	return NULL;
+}
+
+void handleUART(UART_HandleTypeDef* huart, uint8_t* rxBuff, uint8_t* txBuff, Message_t* ownRec, Message_t* recA, Message_t* recB) {
+	HAL_UART_Receive(huart, rxBuff, MSG_TOTAL_SIZE, 100);
+
+	Message_t* msg = (Message_t*) rxBuff;
+
+	if (msg->type == MSG_TYPE_PUBLISH) {
+		uart1_debugf("PUBLISH received: ID=%u\r\n", msg->ID); //debugging
+		storeMessage(ownRec, msg);
+	}
+	else if (msg->type == MSG_TYPE_SUBSCRIBE) {
+		uart1_debugf("SUBSCRIBE received: ID=%u\r\n", msg->ID); //debugging
+		Message_t* found = findMessage(recA, msg->ID);
+		if (!found) found = findMessage(recB, msg->ID);
+
+		if (found) {
+			uart1_debugf("Found msg ID=%u, sending back\r\n", msg->ID); //debugging
+			memcpy(txBuff, found, MSG_TOTAL_SIZE);
+			HAL_UART_Transmit(huart, txBuff, MSG_TOTAL_SIZE, 100);
+		}
+	}
+}
+
 
 /* USER CODE END 0 */
 
@@ -99,12 +175,10 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_UART_Receive_DMA(&huart2, rx_msg, sizeof(rx_msg));
 
   /* USER CODE END 2 */
 
@@ -115,10 +189,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-//	  char debug[] = "no message recieved\n";
-//	  HAL_UART_Transmit(&huart1, (uint8_t*)debug, sizeof(debug) - 1, 100);
-	  HAL_Delay(500);
+
+	  handleUART(&huart1, UART1_rxBuffer, UART1_txBuffer, UART1_record, UART2_record, UART3_record);
+	  handleUART(&huart2, UART2_rxBuffer, UART2_txBuffer, UART2_record, UART1_record, UART3_record);
+	  handleUART(&huart3, UART3_rxBuffer, UART3_txBuffer, UART3_record, UART1_record, UART2_record);
+
   }
   /* USER CODE END 3 */
 }
@@ -259,25 +334,6 @@ static void MX_USART3_UART_Init(void)
 }
 
 /**
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void)
-{
-
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA1_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA1_Channel2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
-  /* DMA1_Channel6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
-
-}
-
-/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -311,41 +367,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-//void HAL_UARTex_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
-//	if (huart->Instance == USART2) {
-//		char debug[] = "Data received: ";
-//		HAL_UART_Transmit(&huart1, (uint8_t*)debug, sizeof(debug) - 1, 100);
-//		HAL_UART_Transmit(&huart1, msg, Size, 100);
-//
-//		HAL_UARTEx_ReceiveToIdle_DMA(&huart2, msg, sizeof(msg));
-//	}
-//}
-
-//HAL_UARTex_RxEventCallback is not supported in stm32f1
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-	if (huart->Instance == USART2) {
-
-		//transfering the message
-		memcpy(tx_msg, rx_msg, sizeof(tx_msg));
-
-		//debug output
-		char debug[] = "\n received: ";
-		HAL_UART_Transmit(&huart1, (uint8_t*)debug, sizeof(debug) - 1, 100);
-		HAL_UART_Transmit(&huart1, rx_msg, sizeof(rx_msg), 100);
-
-		//restarting the DMAs
-		HAL_UART_Receive_DMA(&huart2, rx_msg, sizeof(rx_msg));
-		HAL_UART_Transmit_DMA(&huart3, tx_msg, sizeof(tx_msg));
-	}
-}
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
-	if (huart->Instance == USART3) {
-		char debug[] = "forwarded.";
-		HAL_UART_Transmit(&huart1, (uint8_t*)debug, sizeof(debug) - 1, 100);
-	}
-}
 
 
 /* USER CODE END 4 */
