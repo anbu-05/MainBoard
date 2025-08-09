@@ -24,22 +24,26 @@
 #include <string.h>
 
 //for debugging
-#include <stdio.h>
 #include <stdarg.h>
-
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef struct {
+	uint16_t type;
+	uint16_t ID;
+	uint8_t data[64];
+} Message_t;
 
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define MSG_TYPE_PUBLISH 0x10
-#define MSG_TYPE_SUBSCRIBE 0x11
-#define MSG_TOTAL_SIZE 67
+#define MSG_TYPE_PUBLISH 0x1000
+#define MSG_TYPE_SUBSCRIBE 0x1100
+#define MSG_TOTAL_SIZE sizeof(Message_t)
 #define MAX_TOPICS 16
 
 
@@ -54,6 +58,12 @@
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
+DMA_HandleTypeDef hdma_usart1_rx;
+DMA_HandleTypeDef hdma_usart1_tx;
+DMA_HandleTypeDef hdma_usart2_rx;
+DMA_HandleTypeDef hdma_usart2_tx;
+DMA_HandleTypeDef hdma_usart3_rx;
+DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
 uint8_t UART1_rxBuffer[MSG_TOTAL_SIZE];
@@ -63,11 +73,16 @@ uint8_t UART3_rxBuffer[MSG_TOTAL_SIZE];
 uint8_t UART1_txBuffer[MSG_TOTAL_SIZE];
 uint8_t UART2_txBuffer[MSG_TOTAL_SIZE];
 uint8_t UART3_txBuffer[MSG_TOTAL_SIZE];
+
+Message_t UART1_record[MAX_TOPICS] = {0};
+Message_t UART2_record[MAX_TOPICS] = {0};
+Message_t UART3_record[MAX_TOPICS] = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART3_UART_Init(void);
@@ -77,31 +92,21 @@ static void MX_USART3_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-typedef struct {
-	uint8_t type;
-	uint16_t ID;
-	uint8_t data[64];
-} Message_t;
-
-Message_t UART1_record[MAX_TOPICS] = {0};
-Message_t UART2_record[MAX_TOPICS] = {0};
-Message_t UART3_record[MAX_TOPICS] = {0};
 
 
 //for debugging -remove later:
 
-void uart1_debug(const char* msg) {
-	HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 100);
+void debug_uart(const char* fmt, ...) {
+    char buf[80];
+    va_list args;
+    va_start(args, fmt);
+    int n = vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    HAL_UART_Transmit_IT(&huart1, (uint8_t*)buf, n);
 }
 
-void uart1_debugf(const char* format, ...) {
-	char buffer[128];
-	va_list args;
-	va_start(args, format);
-	vsnprintf(buffer, sizeof(buffer), format, args);
-	va_end(args);
-	HAL_UART_Transmit(&huart1, (uint8_t*)buffer, strlen(buffer), 100);
-}
+#define DLOG(tag, fmt, ...) \
+    debug_uart("[%s] %s:%d: " fmt "\r\n", tag, __FILE__, __LINE__, ##__VA_ARGS__)
 
 //---------//
 
@@ -121,26 +126,88 @@ Message_t* findMessage(Message_t* record, uint16_t ID) {
 	return NULL;
 }
 
-void handleUART(UART_HandleTypeDef* huart, uint8_t* rxBuff, uint8_t* txBuff, Message_t* ownRec, Message_t* recA, Message_t* recB) {
-	HAL_UART_Receive(huart, rxBuff, MSG_TOTAL_SIZE, 100);
+//void handleUART(UART_HandleTypeDef* huart, uint8_t* rxBuff, uint8_t* txBuff, Message_t* ownRec, Message_t* recA, Message_t* recB, char* debug_uart_number) {
+//	HAL_UART_Receive(huart, rxBuff, MSG_TOTAL_SIZE, 100);
+//
+//	Message_t* msg = (Message_t*) rxBuff;
+//
+//	if (msg->type == MSG_TYPE_PUBLISH) {
+//
+//		//debugging
+//		DLOG("PUB", "ID=%u", msg->ID);
+//
+//		storeMessage(ownRec, msg);
+//	}
+//	else if (msg->type == MSG_TYPE_SUBSCRIBE) {
+//
+//		//debugging
+//		DLOG("SUB", "ID=%u", msg->ID);
+//
+//		Message_t* found = findMessage(recA, msg->ID);
+//		if (!found) found = findMessage(recB, msg->ID);
+//
+//		if (found) {
+//
+//			//debugging
+//			DLOG("RESP", "ID=%u %s", msg->ID, found ? "OK" : "NOK");
+//
+//			memcpy(txBuff, found, MSG_TOTAL_SIZE);
+//			HAL_UART_Transmit(huart, txBuff, MSG_TOTAL_SIZE, 100);
+//		}
+//	}
+//}
+
+void processMessage(UART_HandleTypeDef* huart,
+					uint8_t* rxBuff,
+					uint8_t* txBuff,
+					Message_t* ownRec,
+					Message_t* recA,
+					Message_t* recB) {
 
 	Message_t* msg = (Message_t*) rxBuff;
 
 	if (msg->type == MSG_TYPE_PUBLISH) {
-		uart1_debugf("PUBLISH received: ID=%u\r\n", msg->ID); //debugging
+
+		//debugging
+		//DLOG("PUB", "ID=%u", msg->ID);
+		uint8_t debug[64] = {'\0'};
+		sprintf(debug, "PUB ID=%d", msg->ID);
+		HAL_UART_Transmit(&huart1, debug, sizeof(debug), 100);
+
 		storeMessage(ownRec, msg);
 	}
 	else if (msg->type == MSG_TYPE_SUBSCRIBE) {
-		uart1_debugf("SUBSCRIBE received: ID=%u\r\n", msg->ID); //debugging
+
+		//debugging
+		DLOG("SUB", "ID=%u", msg->ID);
+
 		Message_t* found = findMessage(recA, msg->ID);
 		if (!found) found = findMessage(recB, msg->ID);
 
 		if (found) {
-			uart1_debugf("Found msg ID=%u, sending back\r\n", msg->ID); //debugging
+
+			//debugging
+			DLOG("RESP", "ID=%u %s", msg->ID, found ? "OK" : "NOK");
+
 			memcpy(txBuff, found, MSG_TOTAL_SIZE);
-			HAL_UART_Transmit(huart, txBuff, MSG_TOTAL_SIZE, 100);
+			HAL_UART_Transmit_IT(huart, txBuff, sizeof(txBuff));
 		}
 	}
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+    if (huart == &huart1) {
+        processMessage(&huart1, UART1_rxBuffer, UART1_txBuffer, UART1_record, UART2_record, UART3_record);
+        HAL_UART_Receive_IT(&huart1, UART1_rxBuffer, MSG_TOTAL_SIZE);
+    }
+    else if (huart == &huart2) {
+        processMessage(&huart2, UART2_rxBuffer, UART2_txBuffer, UART2_record, UART1_record, UART3_record);
+        HAL_UART_Receive_IT(&huart2, UART2_rxBuffer, MSG_TOTAL_SIZE);
+    }
+    else if (huart == &huart3) {
+        processMessage(&huart3, UART3_rxBuffer, UART3_txBuffer, UART3_record, UART1_record, UART2_record);
+        HAL_UART_Receive_IT(&huart3, UART3_rxBuffer, MSG_TOTAL_SIZE);
+    }
 }
 
 
@@ -175,11 +242,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_UART_Receive_IT(&huart1, UART1_rxBuffer, MSG_TOTAL_SIZE);
+  HAL_UART_Receive_IT(&huart2, UART2_rxBuffer, MSG_TOTAL_SIZE);
+  HAL_UART_Receive_IT(&huart3, UART3_rxBuffer, MSG_TOTAL_SIZE);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -190,9 +260,12 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	  handleUART(&huart1, UART1_rxBuffer, UART1_txBuffer, UART1_record, UART2_record, UART3_record);
-	  handleUART(&huart2, UART2_rxBuffer, UART2_txBuffer, UART2_record, UART1_record, UART3_record);
-	  handleUART(&huart3, UART3_rxBuffer, UART3_txBuffer, UART3_record, UART1_record, UART2_record);
+//	handleUART(&huart1, UART1_rxBuffer, UART1_txBuffer, UART1_record, UART2_record, UART3_record, "1");
+//	handleUART(&huart2, UART2_rxBuffer, UART2_txBuffer, UART2_record, UART1_record, UART3_record, "2");
+//	handleUART(&huart3, UART3_rxBuffer, UART3_txBuffer, UART3_record, UART1_record, UART2_record, "3");
+
+	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+	HAL_Delay(500);
 
   }
   /* USER CODE END 3 */
@@ -330,6 +403,37 @@ static void MX_USART3_UART_Init(void)
   /* USER CODE BEGIN USART3_Init 2 */
 
   /* USER CODE END USART3_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
+  /* DMA1_Channel3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+  /* DMA1_Channel4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
+  /* DMA1_Channel6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
+  /* DMA1_Channel7_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
 
 }
 

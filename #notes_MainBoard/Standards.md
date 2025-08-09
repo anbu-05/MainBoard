@@ -17,9 +17,9 @@ JST pinout
 -----
 data packaging structure:
 
-| type [1] | ID [2] | Data [64] |
+| type [2] | ID [2] | Data [64] |
 | -------- | ------ | --------- |
 
 message type:
-0x10 - publishing data
-0x11 - subscribing to data
+0x1000 - publishing data
+0x1100 - subscribing to data

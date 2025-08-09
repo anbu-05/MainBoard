@@ -36,3 +36,11 @@
 - made the prototype better. made a proper data standard.
 - | type [1] | ID [2] | Data [64] |
 - created the handleUART function that receives data, and IDs it into different buffers.
+### 10 Aug
+- the handleUART function is a blocking function -im suspecting that's why it's not working. i am trying it with interrupts
+- interrupts doesnt seem to work either. it's almost like the processMessage function never gets called
+- i opened a new project file. i tried the absolute basics -receive polling on uart 3 take that data and transmit polling on uart 1. i did this to check the connections. and good news the data transferred so the connections are right
+- so i tried interrupt receive in the debug project file too. and it didnt work. and it didnt work because my buffer for receiving was 64 bytes. whereas the sender (nano) was sending only 4 bytes. the IRQ would fire only if all 64 bytes of the buffer are filled -and since there was only 4 bytes coming in the IRQ was never firing
+- i changed the buffer to 4 bytes to test this theory (that chatgpt gave me) -and it works. so that was indeed the problem. 
+- (the chatgpt chat that helped me find this out: [STM32 UART buffer fix](https://chatgpt.com/c/6897bcb8-a188-8328-9fa1-ae345273b807))
+- so now i can either read the data byte by byte and reassemble it -or use DMA with IDLE detection. -im planning to do the latter since obviously reading the data byte by byte is gonna cause a huuge delay
