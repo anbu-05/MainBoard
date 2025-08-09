@@ -64,7 +64,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 //	char debug[64];
 //	int len = sprintf(debug, "contact message=%d\r\n", rx3Buff);
 //	HAL_UART_Transmit(&huart1, (uint8_t*)debug, len, HAL_MAX_DELAY);
-	HAL_UART_Transmit_IT(&huart1, rx3Buff, sizeof(rx3Buff));
+	HAL_UART_Transmit_IT(&huart1, rx3Buff, sizeof(rx3Buff), 100);
 
 	HAL_UART_Receive_IT(&huart3, rx3Buff, sizeof(rx3Buff));
 }

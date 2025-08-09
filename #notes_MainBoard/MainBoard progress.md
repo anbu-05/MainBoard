@@ -1,4 +1,4 @@
-#### 27 july
+### 27 july
 - i have 2 nano's connected to an stm. the stm does dma recieve from one nano -the publisher, and dma transmit to another nano -the subscriber. everything works as intended except for two problems
 	- messages are being forwarded to the subscriber continuously instead of being transmitted only when there's a message from the subscriber
 	- ![[Pasted image 20250727041258.png]]
@@ -44,3 +44,6 @@
 - i changed the buffer to 4 bytes to test this theory (that chatgpt gave me) -and it works. so that was indeed the problem. 
 - (the chatgpt chat that helped me find this out: [STM32 UART buffer fix](https://chatgpt.com/c/6897bcb8-a188-8328-9fa1-ae345273b807))
 - so now i can either read the data byte by byte and reassemble it -or use DMA with IDLE detection. -im planning to do the latter since obviously reading the data byte by byte is gonna cause a huuge delay
+----
+- made chatgpt make a serial_latency_measure python file [Time difference measurement](https://chatgpt.com/c/6897c906-991c-8322-bdde-8d0c12395cf4) -will probably put it to real use
+- it might not be as reliable as i thought. ill prolly need to use an oscilloscope
