@@ -63,3 +63,15 @@
 	- i added a small fix (using chatgpt's help) to fix this endianness problem
 	- the chatgpt chat for all this work: [DMA reception issue](https://chatgpt.com/c/6898bfa5-145c-8327-8132-486add23bba6)
 - now i have another problem where the program is not able to find the requested message in the UART records. this should be a simpler fix. im loving the progress im making
+	- it was because i hadnt changed the endianness of the message itself -i just took out the type and ID of the message, swapped them and created seperate variables out of it.
+	- i assigned these fixed variables back on the message and now it finds the message in the UART records
+- now i have the next problem which is that the retrieved and sent back payload is all jumbled. it's not the same message the publisher is publishing
+	- the random data was this
+`Serial.print("received: ");`
+`Serial.print(i);` 
+`Serial.println();`
+- the "received" was being printed in hex and that was what was confusing me.
+---
+- everything works well if i set the publishing and subscription speed low. but all hell breaks loose when i remove the artificial delays
+- the minimum delay i can put (with all the debug messages in the code) is 100ms. the publisher can only publish once every 100ms but the subscriber can subscribe every 10ms. this delay is kinda huge. i need to bring down this delay to at least around 10ms or less somehow
+- maybe the debug is what's causing the delay. tomorrow ill try removing the debug options and then test the fastest transmission speed.

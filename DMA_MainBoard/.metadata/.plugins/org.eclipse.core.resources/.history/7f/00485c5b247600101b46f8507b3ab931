@@ -273,8 +273,8 @@ int main(void)
 
 	//debugging
 	uint8_t debug[64] = {'\0'};
-	int n = sprintf(debug, "STM32 start debug\n");
-	HAL_UART_Transmit_DMA(&huart1, debug, n);
+	sprintf(debug, "STM32 start debug\n");
+	HAL_UART_Transmit_DMA(&huart1, debug, sizeof(debug), 100);
   /* USER CODE END 2 */
 
   /* Infinite loop */

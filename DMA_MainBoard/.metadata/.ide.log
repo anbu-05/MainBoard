@@ -1,2 +1,6 @@
-2025-08-11 00:00:00,763 [ERROR] LogOutputStream:75 - [STDERR_REDIRECT] [Fatal Error] :1:1: Premature end of file.
-2025-08-11 00:00:00,788 [ERROR] LogOutputStream:75 - [STDERR_REDIRECT] 
+2025-08-11 01:12:09,694 [INFO] WebApp:194 - Connection lost
+2025-08-11 01:12:09,800 [ERROR] LogOutputStream:75 - [STDERR_REDIRECT] [Fatal Error] :1:1: Premature end of file.
+2025-08-11 01:12:09,800 [ERROR] LogOutputStream:75 - [STDERR_REDIRECT] 
+2025-08-11 01:12:10,342 [INFO] WebApp:191 - Connection restablished
+2025-08-11 01:12:10,823 [ERROR] LogOutputStream:75 - [STDERR_REDIRECT] [Fatal Error] :1:1: Premature end of file.
+2025-08-11 01:12:10,823 [ERROR] LogOutputStream:75 - [STDERR_REDIRECT] 

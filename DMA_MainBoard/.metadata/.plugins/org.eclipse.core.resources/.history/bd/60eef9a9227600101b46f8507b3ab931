@@ -132,29 +132,28 @@ void processMessage(UART_HandleTypeDef* huart,
 	//debugging
 	uint8_t debug[64] = {'\0'};
 	int n = sprintf(debug, "processMessage called with message type = %u\n", msg->type);
-	HAL_UART_Transmit_DMA(&huart1, debug, n);
-
-//	n = sprintf(debug, "received data: ");
-//	HAL_UART_Transmit_DMA(&huart1, debug, n);
-//
-//	// Print data in hex format
-//	for (int i = 0; i < 64; i++) {  // size of msg->data
-//		n = sprintf(debug, "%02X ", msg->data[i]);
-//		HAL_UART_Transmit_DMA(&huart1, debug, n);
-//	}
-//
-//	n = sprintf(debug, "\n");
-//	HAL_UART_Transmit_DMA(&huart1, debug, n);
-//
-//	//------------//
+	HAL_UART_Transmit(&huart1, debug, n, 100);
 
 	if (msg->type == MSG_TYPE_PUBLISH) {
 
 		//debugging
 		uint8_t debug[64] = {'\0'};
 		int n = sprintf(debug, "PUB ID=%d\n", msg->ID);
-		HAL_UART_Transmit_DMA(&huart1, debug, n);
+		HAL_UART_Transmit(&huart1, debug, n, 100);
 
+		n = sprintf(debug, "received data: ");
+		HAL_UART_Transmit(&huart1, debug, n, 100);
+
+	    // Print data in hex format
+	    for (int i = 0; i < 64; i++) {  // size of msg->data
+	        n = sprintf(debug, "%02X ", msg->data[i]);
+	        HAL_UART_Transmit(&huart1, debug, n, 100);
+	    }
+
+		n = sprintf(debug, "\n");
+		HAL_UART_Transmit(&huart1, debug, n, 100);
+
+		//------------//
 
 		storeMessage(ownRec, msg);
 	}
@@ -163,7 +162,7 @@ void processMessage(UART_HandleTypeDef* huart,
 		//debugging
 		uint8_t debug[64] = {'\0'};
 		int n = sprintf(debug, "SUB ID=%u\n", msg->ID);
-		HAL_UART_Transmit_DMA(&huart1, debug, n);
+		HAL_UART_Transmit(&huart1, debug, n, 100);
 
 
 		Message_t* found = findMessage(recA, msg->ID);
@@ -174,33 +173,17 @@ void processMessage(UART_HandleTypeDef* huart,
 			//debugging
 			uint8_t debug[64] = {'\0'};
 			int n = sprintf(debug, "RESP ID=%u %s\n", msg->ID, found ? "OK" : "NOK");
-			HAL_UART_Transmit_DMA(&huart1, debug, n);
+			HAL_UART_Transmit(&huart1, debug, n, 100);
 
 			memcpy(txBuff, found, MSG_TOTAL_SIZE);
 
-//			//debugging
-//
-//			n = sprintf(debug, "transmitted data: ");
-//			HAL_UART_Transmit_DMA(&huart1, debug, n);
-//
-//			// Print data in hex format
-//			for (int i = 0; i < 64; i++) {  // size of msg->data
-//				n = sprintf(debug, "%02X ", txBuff[i]);
-//				HAL_UART_Transmit_DMA(&huart1, debug, n);
-//			}
-//
-//			n = sprintf(debug, "\n");
-//			HAL_UART_Transmit_DMA(&huart1, debug, n);
-//
-//			//------------//
-
-			HAL_UART_Transmit_DMA(huart, txBuff, MSG_TOTAL_SIZE);
+			HAL_UART_Transmit_IT(huart, txBuff, MSG_TOTAL_SIZE);
 		}
 		else {
 			//debugging
 			uint8_t debug[64] = {'\0'};
 			int n = sprintf(debug, "transfer message not found for ID %u\n", msg->ID);
-			HAL_UART_Transmit_DMA(&huart1, debug, n);
+			HAL_UART_Transmit(&huart1, debug, n, 100);
 		}
 	}
 }
@@ -214,7 +197,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
 		//debugging
 		uint8_t debug[64] = {0};
 		int n = sprintf(debug, "USART2 rx complete callback\n");
-		HAL_UART_Transmit_DMA(&huart1, debug, n);
+		HAL_UART_Transmit(&huart1, debug, n, 100);
 
         processMessage(&huart2, UART2_rxBuffer, UART2_txBuffer, UART2_record, UART1_record, UART3_record);
         HAL_UARTEx_ReceiveToIdle_DMA(&huart2, UART2_rxBuffer, MSG_TOTAL_SIZE);
@@ -224,7 +207,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
 		//debugging
 		uint8_t debug[64] = {0};
 		int n = sprintf(debug, "USART3 rx complete callback\n");
-		HAL_UART_Transmit_DMA(&huart1, debug, n);
+		HAL_UART_Transmit(&huart1, debug, n, 100);
 
         processMessage(&huart3, UART3_rxBuffer, UART3_txBuffer, UART3_record, UART1_record, UART2_record);
         HAL_UARTEx_ReceiveToIdle_DMA(&huart3, UART3_rxBuffer, MSG_TOTAL_SIZE);
@@ -273,8 +256,8 @@ int main(void)
 
 	//debugging
 	uint8_t debug[64] = {'\0'};
-	int n = sprintf(debug, "STM32 start debug\n");
-	HAL_UART_Transmit_DMA(&huart1, debug, n);
+	sprintf(debug, "STM32 start debug\n");
+	HAL_UART_Transmit(&huart1, debug, sizeof(debug), 100);
   /* USER CODE END 2 */
 
   /* Infinite loop */

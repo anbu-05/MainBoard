@@ -14,19 +14,24 @@ void setup() {
 }
 
 void loop() {
-  
+
   //encode as big-endian (MSB first)
   Serial.write(msg_type >> 8);
   Serial.write(msg_type);
   Serial.write(msg_ID >> 8);
   Serial.write(msg_ID);
 
+
+  // if (Serial.available()) Serial.print("received: ");
+
   while (Serial.available() > 0) {
     i = Serial.read();
 
-    Serial.print("received: ");
+    // Serial.print("received: ");
+    // Serial.print(i);
+    // Serial.println();
     Serial.write(i);
-    Serial.println();
   }
-  delay(2000);
+
+  delay(100);
 }

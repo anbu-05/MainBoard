@@ -33,11 +33,12 @@ void loop() {
   msg.data[20] = 30;
   msg.data[30] = 40;
 
+  //encode as big-endian (MSB first)
   Serial.write(msg.type >> 8); // MSB
   Serial.write(msg.type); // LSB
   Serial.write(msg.ID >> 8);
   Serial.write(msg.ID);
   Serial.write(msg.data, sizeof(msg.data));
-  delay(500);
+  delay(100);
 }
 
