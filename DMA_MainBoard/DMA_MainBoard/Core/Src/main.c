@@ -66,13 +66,13 @@ DMA_HandleTypeDef hdma_usart3_rx;
 DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
-uint8_t UART1_rxBuffer[MSG_TOTAL_SIZE];
-uint8_t UART2_rxBuffer[MSG_TOTAL_SIZE];
-uint8_t UART3_rxBuffer[MSG_TOTAL_SIZE];
+static uint8_t UART1_rxBuffer[MSG_TOTAL_SIZE] = {0};
+static uint8_t UART2_rxBuffer[MSG_TOTAL_SIZE] = {0};
+static uint8_t UART3_rxBuffer[MSG_TOTAL_SIZE] = {0};
 
-uint8_t UART1_txBuffer[MSG_TOTAL_SIZE];
-uint8_t UART2_txBuffer[MSG_TOTAL_SIZE];
-uint8_t UART3_txBuffer[MSG_TOTAL_SIZE];
+static uint8_t UART1_txBuffer[MSG_TOTAL_SIZE] = {0};
+static uint8_t UART2_txBuffer[MSG_TOTAL_SIZE] = {0};
+static uint8_t UART3_txBuffer[MSG_TOTAL_SIZE] = {0};
 
 Message_t UART1_record[MAX_TOPICS] = {0};
 Message_t UART2_record[MAX_TOPICS] = {0};
@@ -94,21 +94,6 @@ static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN 0 */
 
 
-//for debugging -remove later:
-
-void debug_uart(const char* fmt, ...) {
-    char buf[80];
-    va_list args;
-    va_start(args, fmt);
-    int n = vsnprintf(buf, sizeof(buf), fmt, args);
-    va_end(args);
-    HAL_UART_Transmit_IT(&huart1, (uint8_t*)buf, n);
-}
-
-#define DLOG(tag, fmt, ...) \
-    debug_uart("[%s] %s:%d: " fmt "\r\n", tag, __FILE__, __LINE__, ##__VA_ARGS__)
-
-//---------//
 
 void storeMessage(Message_t* record, Message_t* msg) {
 	for (int i=0;i<MAX_TOPICS;i++) {
@@ -126,37 +111,6 @@ Message_t* findMessage(Message_t* record, uint16_t ID) {
 	return NULL;
 }
 
-//void handleUART(UART_HandleTypeDef* huart, uint8_t* rxBuff, uint8_t* txBuff, Message_t* ownRec, Message_t* recA, Message_t* recB, char* debug_uart_number) {
-//	HAL_UART_Receive(huart, rxBuff, MSG_TOTAL_SIZE, 100);
-//
-//	Message_t* msg = (Message_t*) rxBuff;
-//
-//	if (msg->type == MSG_TYPE_PUBLISH) {
-//
-//		//debugging
-//		DLOG("PUB", "ID=%u", msg->ID);
-//
-//		storeMessage(ownRec, msg);
-//	}
-//	else if (msg->type == MSG_TYPE_SUBSCRIBE) {
-//
-//		//debugging
-//		DLOG("SUB", "ID=%u", msg->ID);
-//
-//		Message_t* found = findMessage(recA, msg->ID);
-//		if (!found) found = findMessage(recB, msg->ID);
-//
-//		if (found) {
-//
-//			//debugging
-//			DLOG("RESP", "ID=%u %s", msg->ID, found ? "OK" : "NOK");
-//
-//			memcpy(txBuff, found, MSG_TOTAL_SIZE);
-//			HAL_UART_Transmit(huart, txBuff, MSG_TOTAL_SIZE, 100);
-//		}
-//	}
-//}
-
 void processMessage(UART_HandleTypeDef* huart,
 					uint8_t* rxBuff,
 					uint8_t* txBuff,
@@ -164,52 +118,84 @@ void processMessage(UART_HandleTypeDef* huart,
 					Message_t* recA,
 					Message_t* recB) {
 
+//	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+
 	Message_t* msg = (Message_t*) rxBuff;
 
-	if (msg->type == MSG_TYPE_PUBLISH) {
+	//fixing endian-ness -interpreting the incoming message as big-endian
+	uint16_t type = (msg->type << 8) | (msg->type >> 8);
+	uint16_t ID   = (msg->ID   << 8) | (msg->ID   >> 8);
+
+	//debugging
+	uint8_t debug[64] = {'\0'};
+	int n = sprintf(debug, "processMessage called with message type = %u\n", type);
+	HAL_UART_Transmit(&huart1, debug, n, 100);
+
+	if (type == MSG_TYPE_PUBLISH) {
 
 		//debugging
-		//DLOG("PUB", "ID=%u", msg->ID);
 		uint8_t debug[64] = {'\0'};
-		sprintf(debug, "PUB ID=%d", msg->ID);
-		HAL_UART_Transmit(&huart1, debug, sizeof(debug), 100);
+		int n = sprintf(debug, "PUB ID=%d\n", ID);
+		HAL_UART_Transmit(&huart1, debug, n, 100);
 
 		storeMessage(ownRec, msg);
 	}
-	else if (msg->type == MSG_TYPE_SUBSCRIBE) {
+	else if (type == MSG_TYPE_SUBSCRIBE) {
 
 		//debugging
-		DLOG("SUB", "ID=%u", msg->ID);
+		uint8_t debug[64] = {'\0'};
+		int n = sprintf(debug, "SUB ID=%u\n", ID);
+		HAL_UART_Transmit(&huart1, debug, n, 100);
 
-		Message_t* found = findMessage(recA, msg->ID);
-		if (!found) found = findMessage(recB, msg->ID);
+
+		Message_t* found = findMessage(recA, ID);
+		if (!found) found = findMessage(recB, ID);
 
 		if (found) {
 
 			//debugging
-			DLOG("RESP", "ID=%u %s", msg->ID, found ? "OK" : "NOK");
+			uint8_t debug[64] = {'\0'};
+			int n = sprintf(debug, "RESP ID=%u %s\n", ID, found ? "OK" : "NOK");
+			HAL_UART_Transmit(&huart1, debug, n, 100);
 
 			memcpy(txBuff, found, MSG_TOTAL_SIZE);
-			HAL_UART_Transmit_IT(huart, txBuff, sizeof(txBuff));
+
+			HAL_UART_Transmit_IT(huart, txBuff, MSG_TOTAL_SIZE);
+		}
+		else {
+			//debugging
+			uint8_t debug[64] = {'\0'};
+			int n = sprintf(debug, "transfer message not found for ID %u\n", ID);
+			HAL_UART_Transmit(&huart1, debug, n, 100);
 		}
 	}
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-    if (huart == &huart1) {
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
+    if (huart->Instance == USART1) {
         processMessage(&huart1, UART1_rxBuffer, UART1_txBuffer, UART1_record, UART2_record, UART3_record);
-        HAL_UART_Receive_IT(&huart1, UART1_rxBuffer, MSG_TOTAL_SIZE);
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart1, UART1_rxBuffer, MSG_TOTAL_SIZE);
     }
-    else if (huart == &huart2) {
+    else if (huart->Instance == USART2) {
+		//debugging
+		uint8_t debug[64] = {0};
+		int n = sprintf(debug, "USART2 rx complete callback\n");
+		HAL_UART_Transmit(&huart1, debug, n, 100);
+
         processMessage(&huart2, UART2_rxBuffer, UART2_txBuffer, UART2_record, UART1_record, UART3_record);
-        HAL_UART_Receive_IT(&huart2, UART2_rxBuffer, MSG_TOTAL_SIZE);
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart2, UART2_rxBuffer, MSG_TOTAL_SIZE);
+
     }
-    else if (huart == &huart3) {
+    else if (huart->Instance == USART3) {
+		//debugging
+		uint8_t debug[64] = {0};
+		int n = sprintf(debug, "USART3 rx complete callback\n");
+		HAL_UART_Transmit(&huart1, debug, n, 100);
+
         processMessage(&huart3, UART3_rxBuffer, UART3_txBuffer, UART3_record, UART1_record, UART2_record);
-        HAL_UART_Receive_IT(&huart3, UART3_rxBuffer, MSG_TOTAL_SIZE);
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart3, UART3_rxBuffer, MSG_TOTAL_SIZE);
     }
 }
-
 
 /* USER CODE END 0 */
 
@@ -247,9 +233,14 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_UART_Receive_IT(&huart1, UART1_rxBuffer, MSG_TOTAL_SIZE);
-  HAL_UART_Receive_IT(&huart2, UART2_rxBuffer, MSG_TOTAL_SIZE);
-  HAL_UART_Receive_IT(&huart3, UART3_rxBuffer, MSG_TOTAL_SIZE);
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart1, UART1_rxBuffer, MSG_TOTAL_SIZE);
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart2, UART2_rxBuffer, MSG_TOTAL_SIZE);
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart3, UART3_rxBuffer, MSG_TOTAL_SIZE);
+
+	//debugging
+	uint8_t debug[64] = {'\0'};
+	sprintf(debug, "STM32 start debug\n");
+	HAL_UART_Transmit(&huart1, debug, sizeof(debug), 100);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -259,13 +250,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
-//	handleUART(&huart1, UART1_rxBuffer, UART1_txBuffer, UART1_record, UART2_record, UART3_record, "1");
-//	handleUART(&huart2, UART2_rxBuffer, UART2_txBuffer, UART2_record, UART1_record, UART3_record, "2");
-//	handleUART(&huart3, UART3_rxBuffer, UART3_txBuffer, UART3_record, UART1_record, UART2_record, "3");
-
-	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-	HAL_Delay(500);
 
   }
   /* USER CODE END 3 */
@@ -283,10 +267,13 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -296,12 +283,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }

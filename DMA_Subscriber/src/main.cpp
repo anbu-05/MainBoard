@@ -14,7 +14,8 @@ void setup() {
 }
 
 void loop() {
-
+  
+  //encode as big-endian (MSB first)
   Serial.write(msg_type >> 8);
   Serial.write(msg_type);
   Serial.write(msg_ID >> 8);

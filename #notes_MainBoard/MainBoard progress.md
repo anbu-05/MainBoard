@@ -47,3 +47,19 @@
 ----
 - made chatgpt make a serial_latency_measure python file [Time difference measurement](https://chatgpt.com/c/6897c906-991c-8322-bdde-8d0c12395cf4) -will probably put it to real use
 - it might not be as reliable as i thought. ill prolly need to use an oscilloscope
+---
+- im trying DMA with IDLE detection and going into quite a rabbit hole without a goal. the IDLE detection works, now i need to move on from the debugger project file and implement this into the main project file.
+---
+- when i translated the same logic as the debug project, now suddenly it wont work. and i have no clue why it doesnt.
+- i added debug messages absolutely everywhere.
+	- the stm32 starts
+	- the callback function is called and the right huart is also called
+
+- IMPORTANT: i messed up the connections for the publisher lmao -the rx and tx are connected in reverse. the rx of arduino is going to rx2 of stm32. i did some fixing on that and now uart2 also works.
+---
+- great news. with more debug messages everywhere, i figured out the progressMessage function is also being called -but there was a problem with the endianness of the incomming message
+	- basically, the publisher and subscriber were printing in big endian -they were printing the message type (0x1000 and 0x1100) as it is 0x1000 and 0x1100
+	- but the stm32 was reading these message types as little endian -as 0x0010 and 0x0011, so the if conditions inside the processMessage function which were checking for 0x1000 and 0x1100 were never triggered.
+	- i added a small fix (using chatgpt's help) to fix this endianness problem
+	- the chatgpt chat for all this work: [DMA reception issue](https://chatgpt.com/c/6898bfa5-145c-8327-8132-486add23bba6)
+- now i have another problem where the program is not able to find the requested message in the UART records. this should be a simpler fix. im loving the progress im making
