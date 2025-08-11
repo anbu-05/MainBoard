@@ -75,3 +75,8 @@
 - everything works well if i set the publishing and subscription speed low. but all hell breaks loose when i remove the artificial delays
 - the minimum delay i can put (with all the debug messages in the code) is 100ms. the publisher can only publish once every 100ms but the subscriber can subscribe every 10ms. this delay is kinda huge. i need to bring down this delay to at least around 10ms or less somehow
 - maybe the debug is what's causing the delay. tomorrow ill try removing the debug options and then test the fastest transmission speed.
+### 11 Aug
+- there's another issue where if the publisher stops publishing the subscriber keeps receiving old data. the buffer needs to clear up somehow.
+	- i could to clear up the buffer when there's no data from that ID for a while
+	- or i could pop elements off the buffer every time it's being transmitted
+- also the memcpy operation is prolly taking up a shit ton of resources. i need to get rid of as many copy operations as possible

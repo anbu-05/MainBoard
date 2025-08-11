@@ -1,4 +1,6 @@
+pinout standard:
 
+<needs defining>
 
 
 -----
