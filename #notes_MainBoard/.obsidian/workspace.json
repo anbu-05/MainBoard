@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "MainBoard progress.md",
+                "file": "temp file (delete later).md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "MainBoard progress"
+              "title": "temp file (delete later)"
             }
           }
         ]
@@ -170,7 +170,8 @@
   },
   "active": "d037198ddf6ce7ee",
   "lastOpenFiles": [
-    "Standards.md",
-    "MainBoard progress.md"
+    "MainBoard progress.md",
+    "temp file (delete later).md",
+    "Standards.md"
   ]
 }
