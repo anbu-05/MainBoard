@@ -80,3 +80,4 @@
 	- i could to clear up the buffer when there's no data from that ID for a while
 	- or i could pop elements off the buffer every time it's being transmitted
 - also the memcpy operation is prolly taking up a shit ton of resources. i need to get rid of as many copy operations as possible
+- need to remove the debug statements and test for delay as well
