@@ -1,10 +1,4 @@
 #include <Arduino.h>
-// #include <HardwareSerial.h>
-
-// HardwareSerial UART2(2); //UART2
-
-uint8_t i = 0;
-
 
 struct Message_t {
   uint16_t type;
@@ -14,6 +8,7 @@ struct Message_t {
 
 
 Message_t msg;
+uint8_t j;
 
 void setup() {
   Serial.begin(115200);
@@ -24,21 +19,20 @@ void setup() {
 
 void loop() {
 
-  // for (int i=0;i<32;i++) {
-  //   msg.data[i] = random(100);
-  // }
+  // //encode as big-endian (MSB first)
+  // Serial.write(msg.type >> 8); // MSB
+  // Serial.write(msg.type); // LSB
+  // Serial.write(msg.ID >> 8);
+  // Serial.write(msg.ID);
+  // Serial.write(msg.data, sizeof(msg.data));
 
-  msg.data[0] = 10;
-  msg.data[10] = 20;
-  msg.data[20] = 30;
-  msg.data[30] = 40;
+  Serial.write((uint8_t*)&msg, sizeof(msg));
 
-  //encode as big-endian (MSB first)
-  Serial.write(msg.type >> 8); // MSB
-  Serial.write(msg.type); // LSB
-  Serial.write(msg.ID >> 8);
-  Serial.write(msg.ID);
-  Serial.write(msg.data, sizeof(msg.data));
-  delay(100);
+  for (uint8_t i=0;i<64;i++) {
+    msg.data[i] = j;
+  }
+  j++;
+
+  delay(2000);
 }
 

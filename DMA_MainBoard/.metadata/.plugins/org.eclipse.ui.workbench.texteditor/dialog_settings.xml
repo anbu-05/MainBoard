@@ -3,8 +3,8 @@
 	<item key="hasShownOverlayPopupBefore" value="true"/>
 	<item key="replaceBarOpen" value="true"/>
 	<list key="searchhistory">
-		<item value="HAL_UART_Transmit(&amp;huart1, debug, n, HAL_MAX_DELAY);"/>
 		<item value="HAL_UART_Transmit_DMA(&amp;huart1, debug, n);"/>
+		<item value="HAL_UART_Transmit(&amp;huart1, debug, n, HAL_MAX_DELAY);"/>
 		<item value="HAL_UART_Transmit_DMA(&amp;huart1, debug, n, 100);"/>
 		<item value="HAL_UART_Transmit("/>
 		<item value="HAL_UART_Transmit"/>
@@ -15,8 +15,8 @@
 		<item value="HAL_UART_RxCpltCallback"/>
 	</list>
 	<list key="replacehistory">
-		<item value="HAL_UART_Transmit_DMA(&amp;huart1, debug, n);"/>
 		<item value="HAL_UART_Transmit(&amp;huart1, debug, n, HAL_MAX_DELAY);"/>
+		<item value="HAL_UART_Transmit_DMA(&amp;huart1, debug, n);"/>
 		<item value="HAL_UART_Transmit_DMA("/>
 		<item value="HAL_UART_Transmit_DMA"/>
 		<item value="uart3"/>

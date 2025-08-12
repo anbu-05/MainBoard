@@ -81,3 +81,19 @@
 	- or i could pop elements off the buffer every time it's being transmitted
 - also the memcpy operation is prolly taking up a shit ton of resources. i need to get rid of as many copy operations as possible
 - need to remove the debug statements and test for delay as well
+
+### 12 Aug
+- realized i was overcomplicating the message type and ID transmit by trying to undo little endianness of msg.type and msg.ID. both stm32 and nano process 2 Byte data in little endian format, so i didnt need to worry about switching them around.
+- the data being sent to the stm32 by the publisher was not being stored properly.
+	- each UART port gets a record of type Message_t. the intention is the publisher on this UART port could publish n messages with different IDs. and all these messages would get stored in the different indexes on the record for later use when sending
+	- what was actually happening was the messages were using this record as kind of a buffer. a new message even if it was of the same ID would get stored in index 0 the first time, and then index 1, and then index 2
+	- the fix was simple. initially i was checking if the index was empty or not. now i compare the message ID and the record's message ID and if theyre the same i store it in the same index
+
+- there is this problem where my log prints are double for each communication with my modules.
+	- like if publisher publishes something, that publishing should be received and the rxcpltcallback should be called only once. but here it's being called twice
+	- this happens for both publishing and subscribing.
+	- refer to this chat on how i fixed it: [Code printing data twice](https://chatgpt.com/c/689b7961-f1ec-8327-813a-9429bb71bd38)
+	- i disabled half transfer interrupts using `__HAL_DMA_DISABLE_IT(huart1.hdmarx, DMA_IT_HT);` after each initialization of the rx DMA (including re arming the DMA in callback)
+
+---
+- made the first properly working prototype. check the video file named first working prototype
